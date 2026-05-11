@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import { tracks, type Track } from "@/lib/data";
 
 type PlayerState = {
@@ -46,6 +46,17 @@ export const usePlayer = create<PlayerState>()(
       toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
       cycleRepeat: () => set((state) => ({ repeat: state.repeat === "off" ? "all" : state.repeat === "all" ? "one" : "off" }))
     }),
-    { name: "habana-player" }
+    {
+      name: "habana-player",
+      storage: createJSONStorage(() =>
+        typeof window !== "undefined"
+          ? window.localStorage
+          : {
+              getItem: () => null,
+              setItem: () => undefined,
+              removeItem: () => undefined
+            }
+      )
+    }
   )
 );
