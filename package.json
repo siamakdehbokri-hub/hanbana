@@ -1,0 +1,23 @@
+{
+  "name": "habana",
+  "private": true,
+  "version": "1.0.0",
+  "description": "HABANA - a premium Kurdish music streaming PWA.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @habana/web",
+    "dev:web": "npm run dev --workspace @habana/web",
+    "dev:api": "npm run start:dev --workspace @habana/api",
+    "build": "npm run build --workspace @habana/web && npm run build --workspace @habana/api",
+    "lint": "npm run lint --workspace @habana/web",
+    "db:generate": "npm run prisma:generate --workspace @habana/api",
+    "db:migrate": "npm run prisma:migrate --workspace @habana/api"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  }
+}

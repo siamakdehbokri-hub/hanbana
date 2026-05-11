@@ -1,0 +1,271 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ARTIST
+  EDITOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum TrackStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  TAKEN_DOWN
+}
+
+enum ImportType {
+  JSON
+  CSV
+  API
+}
+
+enum ImportStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum RepeatMode {
+  OFF
+  ONE
+  ALL
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  username           String              @unique
+  passwordHash       String?
+  avatarUrl          String?
+  role               Role                @default(USER)
+  emailVerifiedAt    DateTime?
+  bannedAt           DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  sessions           Session[]
+  playlists          Playlist[]
+  likedTracks        TrackLike[]
+  savedAlbums        AlbumSave[]
+  followedArtists    ArtistFollow[]
+  playEvents         PlayEvent[]
+  notifications      Notification[]
+  recommendations    Recommendation[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshHash  String
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model Artist {
+  id               String          @id @default(cuid())
+  name             String
+  slug             String          @unique
+  imageUrl         String?
+  bannerUrl        String?
+  bio              String?
+  verified         Boolean         @default(false)
+  monthlyListeners Int             @default(0)
+  socialLinks      Json?
+  albums           Album[]
+  tracks           Track[]
+  followers        ArtistFollow[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model Genre {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  parentId  String?
+  parent    Genre?   @relation("GenreTree", fields: [parentId], references: [id])
+  children  Genre[]  @relation("GenreTree")
+  tracks    Track[]
+  createdAt DateTime @default(now())
+}
+
+model Album {
+  id          String       @id @default(cuid())
+  title       String
+  slug        String       @unique
+  coverUrl    String?
+  releaseDate DateTime?
+  artistId    String
+  artist      Artist       @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  tracks      Track[]
+  saves       AlbumSave[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Track {
+  id             String          @id @default(cuid())
+  title          String
+  slug           String          @unique
+  audioUrl       String
+  hlsUrl         String?
+  waveformUrl    String?
+  coverUrl       String?
+  lyrics         String?
+  durationMs     Int?
+  bitrate        Int?
+  status         TrackStatus     @default(DRAFT)
+  aiTags         String[]        @default([])
+  language       String          @default("ku")
+  artistId       String
+  albumId        String?
+  genreId        String?
+  artist         Artist          @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  album          Album?          @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  genre          Genre?          @relation(fields: [genreId], references: [id], onDelete: SetNull)
+  likes          TrackLike[]
+  playlistTracks PlaylistTrack[]
+  playEvents     PlayEvent[]
+  recommendations Recommendation[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([status, createdAt])
+  @@index([artistId])
+  @@index([genreId])
+}
+
+model Playlist {
+  id          String          @id @default(cuid())
+  name        String
+  slug        String          @unique
+  description String?
+  coverUrl    String?
+  isPublic    Boolean         @default(true)
+  isFeatured  Boolean         @default(false)
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tracks      PlaylistTrack[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model PlaylistTrack {
+  id         String   @id @default(cuid())
+  playlistId String
+  trackId    String
+  position   Int
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  addedAt    DateTime @default(now())
+
+  @@unique([playlistId, trackId])
+  @@index([playlistId, position])
+}
+
+model TrackLike {
+  id        String   @id @default(cuid())
+  userId    String
+  trackId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, trackId])
+}
+
+model AlbumSave {
+  id        String   @id @default(cuid())
+  userId    String
+  albumId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, albumId])
+}
+
+model ArtistFollow {
+  id        String   @id @default(cuid())
+  userId    String
+  artistId  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, artistId])
+}
+
+model PlayEvent {
+  id          String   @id @default(cuid())
+  userId      String?
+  trackId     String
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  track       Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  listenMs    Int
+  completed   Boolean  @default(false)
+  device      String?
+  country     String?
+  createdAt   DateTime @default(now())
+
+  @@index([trackId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Recommendation {
+  id        String   @id @default(cuid())
+  userId    String
+  trackId   String
+  score     Float
+  reason    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, score])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  url       String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model ImportJob {
+  id          String       @id @default(cuid())
+  sourceName  String
+  type        ImportType
+  status      ImportStatus @default(QUEUED)
+  payload     Json
+  error       String?
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
