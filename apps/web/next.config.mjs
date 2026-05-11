@@ -1,10 +1,12 @@
 import withPWA from "next-pwa";
 
+const enablePwa = process.env.NEXT_PUBLIC_ENABLE_PWA === "true";
+
 const pwa = withPWA({
   dest: "public",
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === "development",
+  disable: process.env.NODE_ENV === "development" || !enablePwa,
   runtimeCaching: [
     {
       urlPattern: /^https?.*\.(?:mp3|m4a|aac|ogg|wav|m3u8|ts)$/i,
